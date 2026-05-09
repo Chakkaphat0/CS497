@@ -3,7 +3,7 @@ import cors from 'cors'
 import CryptoJS from 'crypto-js'
 
 const app = express()
-const PORT = 3002
+const PORT = process.env.PORT || 3002
 
 // Store for active connections
 const clients = new Map()
