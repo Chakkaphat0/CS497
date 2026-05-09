@@ -10,7 +10,11 @@ const clients = new Map()
 
 // Middleware
 app.use(cors())
-app.use(express.json())
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}))
 
 // Configuration
 const CONFIG = {
@@ -163,7 +167,7 @@ app.post('/webhook', (req, res) => {
     console.log('Body:', JSON.stringify(req.body, null, 2))
     console.log('='.repeat(60) + '\n')
     
-    const body = JSON.stringify(req.body)
+    const body = req.rawBody || JSON.stringify(req.body)
     const signature = req.headers['x-platform-signature']
 
     // Verify signature if secret is configured
