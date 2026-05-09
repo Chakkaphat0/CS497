@@ -65,13 +65,13 @@ function verifySignature(body, signature, secret) {
  */
 app.post('/api/send-message', async (req, res) => {
   try {
-    const { messageText, mode, signingSecret } = req.body
+    const { messageText, mode, signingSecret, userId } = req.body
 
     if (!messageText) {
       return res.status(400).json({ error: 'messageText is required' })
     }
 
-    const userUid = generateUUID()
+    const userUid = userId || generateUUID()
     const messageId = generateUUID()
     const timestampMs = Date.now()
     const timestampSec = Math.floor(timestampMs / 1000).toString()

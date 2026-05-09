@@ -13,6 +13,19 @@ const CONFIG = {
 }
 
 /**
+ * Get or create a consistent user ID for this session
+ * This ensures Botnoi remembers the context of the conversation
+ */
+function getUserId() {
+  let userId = localStorage.getItem('botnoi_user_id')
+  if (!userId) {
+    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    localStorage.setItem('botnoi_user_id', userId)
+  }
+  return userId
+}
+
+/**
  * Send message to Botnoi webhook via backend proxy
  */
 export async function sendMessageToWebhook(messageText, mode = 'normal', signingSecret) {
@@ -30,7 +43,8 @@ export async function sendMessageToWebhook(messageText, mode = 'normal', signing
       body: JSON.stringify({
         messageText: messageText,
         mode: mode,
-        signingSecret: signingSecret
+        signingSecret: signingSecret,
+        userId: getUserId()
       })
     })
 
