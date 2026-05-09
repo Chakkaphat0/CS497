@@ -16,11 +16,12 @@ app.use(express.json({
   }
 }))
 
-// Configuration
+const bot_id = process.env.BOTNOI_BOT_ID || '69ff88c4fb3079f00791405c';
+
 const CONFIG = {
-  bot_id: '69ff88c4fb3079f00791405c',
+  bot_id: bot_id,
   signingSecret: process.env.BOTNOI_SECRET || 'YOUR_SECRET_KEY',
-  botnoi_webhook_url: 'https://api-gateway.botnoi.ai/webhook/custom/69ff88c4fb3079f00791405c',
+  botnoi_webhook_url: `https://api-gateway.botnoi.ai/webhook/custom/${bot_id}`,
   ngrok_url: 'https://cs497-botnoi-backend.onrender.com'
 }
 
