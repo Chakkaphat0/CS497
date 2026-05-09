@@ -17,7 +17,7 @@ const CONFIG = {
   bot_id: '69fc494afb3079f00790fcf7',
   signingSecret: 'YOUR_SECRET_KEY',
   botnoi_webhook_url: 'https://api-gateway.botnoi.ai/webhook/custom/69fc494afb3079f00790fcf7',
-  ngrok_url: 'https://c2c9-1-10-142-148.ngrok-free.app'
+  ngrok_url: 'https://cs497-botnoi-backend.onrender.com'
 }
 
 /**

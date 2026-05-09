@@ -3,7 +3,7 @@
  * This avoids CORS issues by routing through our Express server
  */
 
-const WEBHOOK_SERVER_URL = 'http://localhost:3002'
+const WEBHOOK_SERVER_URL = 'https://cs497-botnoi-backend.onrender.com'
 
 // Configuration
 const CONFIG = {

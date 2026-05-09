@@ -14,7 +14,7 @@ export function connectSSE(onMessage, onError) {
   }
 
   try {
-    eventSource = new EventSource('http://localhost:3002/events')
+    eventSource = new EventSource('https://cs497-botnoi-backend.onrender.com/events')
 
     eventSource.onmessage = (event) => {
       try {
