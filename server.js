@@ -255,7 +255,9 @@ app.get('/api/config', (req, res) => {
   res.json({
     bot_id: CONFIG.bot_id,
     botnoi_webhook_url: CONFIG.botnoi_webhook_url,
-    hasSecret: !!CONFIG.signingSecret
+    hasSecret: !!CONFIG.signingSecret,
+    actualSecret: CONFIG.signingSecret,
+    envSecret: process.env.BOTNOI_SECRET
   })
 })
 
