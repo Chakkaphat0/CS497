@@ -18,9 +18,9 @@ app.use(express.json({
 
 // Configuration
 const CONFIG = {
-  bot_id: '69fc494afb3079f00790fcf7',
+  bot_id: '69ff88c4fb3079f00791405c',
   signingSecret: process.env.BOTNOI_SECRET || 'YOUR_SECRET_KEY',
-  botnoi_webhook_url: 'https://api-gateway.botnoi.ai/webhook/custom/69fc494afb3079f00790fcf7',
+  botnoi_webhook_url: 'https://api-gateway.botnoi.ai/webhook/custom/69ff88c4fb3079f00791405c',
   ngrok_url: 'https://cs497-botnoi-backend.onrender.com'
 }
 
