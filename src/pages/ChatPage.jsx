@@ -32,10 +32,13 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
         if (data.type === 'connected') {
           setConnectionStatus('connected')
         } else if (data.type === 'ai' && data.text) {
-          setMessages(prev => [...prev, {
-            type: 'ai',
-            text: data.text
-          }])
+          const cleanText = data.text.trim()
+          if (cleanText !== '' && cleanText !== 'No response text') {
+            setMessages(prev => [...prev, {
+              type: 'ai',
+              text: cleanText
+            }])
+          }
           setIsLoading(false)
         }
       },
@@ -44,20 +47,8 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
       }
     )
 
-    // Subscribe to messages
-    const unsubscribe = subscribeToMessages((data) => {
-      if (data.type === 'ai' && data.text) {
-        setMessages(prev => [...prev, {
-          type: 'ai',
-          text: data.text
-        }])
-        setIsLoading(false)
-      }
-    })
-
     // Cleanup on unmount
     return () => {
-      unsubscribe()
       disconnectSSE()
     }
   }, [])
