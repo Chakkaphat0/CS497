@@ -1,0 +1,128 @@
+{
+  "info": {
+    "_postman_id": "4cf57487-fac5-400e-b69f-b23b0243b358",
+    "name": "Custom Platform Webhook Integration",
+    "description": "# 🚀 Custom Channel Webhook API\n\nThis collection provides a robust starting point for developers to integrate with the **Custom Channel Webhook**. It automates the generation of the mandatory **HMAC-SHA256 Signature** and handles **Unix Timestamps** for secure message delivery.\n\n### 🛠 Setup Guide\n\n1.  **Configure Variables**: Open the **Variables** tab of this collection.\n2.  **Authentication**: Input your `bot_id` and `signingSecret` (found in the Management Console).\n3.  **Webhook URL**: The `webhookUrl` variable is pre-configured for your bot.\n4.  **Send Request**: Review the `Console` in Postman for raw request/signature details.\n\n### 🔒 Security Headers\nEvery request automatically attaches:\n- `X-Platform-Signature`: `sha256=<hex_hash>`\n- `X-Platform-Timestamp`: Current Unix time (seconds)\n\n---",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Send Message to Webhook",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// 1. Fetch credentials from Collection Variables",
+              "const signingSecret = pm.collectionVariables.get(\"signingSecret\");",
+              "",
+              "// 2. Prepare the Body",
+              "// We replace variables in the string FIRST, then parse to JSON",
+              "let rawBodyStr = pm.variables.replaceIn(pm.request.body.raw);",
+              "let requestBody = JSON.parse(rawBodyStr);",
+              "",
+              "// Ensure UID and Source ID are identical as requested",
+              "const userUid = pm.collectionVariables.get(\"uid\") || pm.variables.replaceIn(\"{{$guid}}\");",
+              "requestBody.sender.uid = userUid;",
+              "requestBody.source.source_id = userUid;",
+              "",
+              "// Generate a unique Message ID if not provided",
+              "requestBody.message.mid = pm.collectionVariables.get(\"mid\") || pm.variables.replaceIn(\"{{$guid}}\");",
+              "",
+              "// Ensure timestamp is a number (it might come in as a string from {{$timestamp}})",
+              "requestBody.message.timestamp = Number(requestBody.message.timestamp);",
+              "",
+              "// Update the raw body with these processed values",
+              "const finalRawBody = JSON.stringify(requestBody);",
+              "pm.request.body.update(finalRawBody);",
+              "",
+              "// 3. Generate Security Headers",
+              "const timestamp = Math.floor(Date.now() / 1000).toString();",
+              "const hash = CryptoJS.HmacSHA256(finalRawBody, signingSecret).toString(CryptoJS.enc.Hex);",
+              "const signature = \"sha256=\" + hash;",
+              "",
+              "// 4. Attach Headers",
+              "pm.request.headers.add({ key: 'X-Platform-Signature', value: signature });",
+              "pm.request.headers.add({ key: 'X-Platform-Timestamp', value: timestamp });",
+              "",
+              "console.log(\"Final Body Sent:\", finalRawBody);",
+              "console.log(\"Signature Generated:\", signature);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"bot_id\": \"{{bot_id}}\",\n    \"source\": {\n        \"source_id\": \"PLACEHOLDER\",\n        \"source_type\": \"user\"\n    },\n    \"sender\": {\n        \"uid\": \"PLACEHOLDER\",\n        \"display_name\": \"{{display_name}}\",\n        \"profile_img_url\": \"\"\n    },\n    \"message\": {\n        \"mid\": \"PLACEHOLDER\",\n        \"type\": \"text\",\n        \"text\": \"{{message_text}}\",\n        \"timestamp\": \"{{$timestamp}}000\"\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{webhookUrl}}",
+          "host": [
+            "{{webhookUrl}}"
+          ]
+        },
+        "description": "Sends a signed text message payload to the specified Webhook URL. The signature and timestamp headers are generated automatically based on the final processed JSON body."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "webhookUrl",
+      "value": "https://api-gateway.botnoi.ai/webhook/custom/{{App_ID}}",
+      "description": "Full target webhook URL. Constructs automatically from bot_id.",
+      "type": "string"
+    },
+    {
+      "key": "signingSecret",
+      "value": "",
+      "description": "The secret used to sign the request (from Channel Permissions → Token). Keep this secure.",
+      "type": "string"
+    },
+    {
+      "key": "bot_id",
+      "value": "69cd3595b08317197c904775",
+      "description": "The unique identifier for your bot instance.",
+      "type": "string"
+    },
+    {
+      "key": "display_name",
+      "value": "Guest 9999",
+      "description": "Visible sender name displayed in the chat.",
+      "type": "string"
+    },
+    {
+      "key": "message_text",
+      "value": "Hello from Custom Channel",
+      "description": "Content of the text message to be sent.",
+      "type": "string"
+    },
+    {
+      "key": "uid",
+      "value": "",
+      "description": "Unique User ID. Leave empty to auto-generate a GUID. source_id will match this value automatically.",
+      "type": "string"
+    },
+    {
+      "key": "mid",
+      "value": "",
+      "description": "Message ID. Leave empty to auto-generate a unique GUID for every message.",
+      "type": "string"
+    }
+  ]
+}

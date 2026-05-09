@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test ngrok Webhook</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test ngrok Webhook</h1>
+        
+        <h2>Instructions:</h2>
+        <ol>
+            <li>Make sure server is running: <code>npm run server</code></li>
+            <li>Make sure ngrok is running: <code>ngrok http 3002</code></li>
+            <li>Click "Test Webhook" button below</li>
+            <li>Check server logs for webhook reception</li>
+        </ol>
+
+        <h2>ngrok URL:</h2>
+        <input type="text" id="ngrokUrl" value="https://c2c9-1-10-142-148.ngrok-free.app" style="width: 100%; padding: 10px; margin: 10px 0;">
+
+        <h2>Test Message:</h2>
+        <textarea id="testMessage" style="width: 100%; height: 100px; padding: 10px; margin: 10px 0;">{"message": {"text": "Test response from Botnoi"}}</textarea>
+
+        <button onclick="testWebhook()">Test Webhook</button>
+        <button onclick="clearLog()">Clear Log</button>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        async function testWebhook() {
+            const ngrokUrl = document.getElementById('ngrokUrl').value;
+            const testMessage = document.getElementById('testMessage').value;
+
+            if (!ngrokUrl) {
+                addLog('❌ ngrok URL is required', 'error');
+                return;
+            }
+
+            try {
+                addLog(`Testing webhook at: ${ngrokUrl}/webhook`, 'info');
+                
+                const response = await fetch(`${ngrokUrl}/webhook`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: testMessage
+                });
+
+                addLog(`Response Status: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                addLog(`Response: ${JSON.stringify(data)}`, 'success');
+                
+                if (response.ok) {
+                    addLog('✅ Webhook test successful!', 'success');
+                    addLog('Check server logs for webhook reception', 'info');
+                } else {
+                    addLog('❌ Webhook test failed', 'error');
+                }
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initial log
+        addLog('Ready to test webhook', 'info');
+        addLog('Make sure ngrok URL is correct', 'info');
+    </script>
+</body>
+</html>

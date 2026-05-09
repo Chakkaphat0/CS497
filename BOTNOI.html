@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI interview</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body.dark {
+      background: #000;
+      color: white;
+    }
+
+    body.dark .card,
+    body.dark .login-box {
+      background: #111;
+      color: white;
+      border-color: #333;
+    }
+
+    body.dark input {
+      background: #000;
+      color: white;
+      border-color: #444;
+    }
+
+    body.dark .welcome {
+      color: #ccc;
+    }
+
+    body.dark .mode-desc {
+      color: #bbb;
+    }
+
+    body.dark .sidebar {
+      background: #111;
+      border-right: 1px solid #333;
+    }
+
+    body.dark .sidebar-btn:hover {
+      background: #222;
+    }
+
+    body.dark .active-sidebar {
+      background: #222;
+    }
+  </style>
+</head>
+
+<body class="bg-white transition-all duration-300">
+
+  <!-- LOGIN -->
+  <section id="loginPage" class="min-h-screen flex items-center justify-center p-6">
+
+    <div class="login-box w-full max-w-md bg-white border rounded-3xl p-10 shadow-xl">
+
+      <h1 class="text-5xl font-bold text-sky-600 text-center mb-3">
+        AI interview
+      </h1>
+
+      <p class="text-center text-gray-500 mb-10">
+        เข้าสู่ระบบเพื่อใช้งาน
+      </p>
+
+      <div class="space-y-5">
+
+        <div>
+          <label class="font-semibold">Email</label>
+
+          <input
+            type="email"
+            placeholder="example@email.com"
+            class="w-full border rounded-2xl px-4 py-4 mt-2 outline-none"
+          />
+        </div>
+
+        <div>
+          <label class="font-semibold">Password</label>
+
+          <input
+            type="password"
+            placeholder="••••••••"
+            class="w-full border rounded-2xl px-4 py-4 mt-2 outline-none"
+          />
+        </div>
+
+        <button
+          onclick="login()"
+          class="w-full bg-sky-500 hover:bg-sky-600 text-white py-4 rounded-2xl font-bold text-lg"
+        >
+          Login
+        </button>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section id="homePage" class="hidden min-h-screen flex items-center justify-center p-8">
+
+    <div class="card bg-white border rounded-3xl p-10 shadow-xl max-w-5xl w-full text-center">
+
+      <h1 class="text-6xl font-bold text-sky-600 mb-4">
+        AI interview
+      </h1>
+
+      <p class="text-gray-500 mb-14 text-2xl">
+        เลือกรูปแบบการฝึกสัมภาษณ์
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+
+        <!-- CHAT -->
+        <button
+          onclick="goChat()"
+          class="border rounded-3xl p-10 hover:bg-sky-50 transition text-left"
+        >
+
+          <div class="text-7xl mb-6">
+            💬
+          </div>
+
+          <h2 class="text-4xl font-bold text-sky-600 mb-4">
+            Chat with AI
+          </h2>
+
+          <p class="text-gray-500 text-xl">
+            ฝึกสัมภาษณ์ผ่านข้อความ
+          </p>
+
+        </button>
+
+        <!-- VOICE -->
+        <button
+          onclick="goVoice()"
+          class="border rounded-3xl p-10 hover:bg-sky-50 transition text-left"
+        >
+
+          <div class="text-7xl mb-6">
+            🎙️
+          </div>
+
+          <h2 class="text-4xl font-bold text-sky-600 mb-4">
+            Voice with AI
+          </h2>
+
+          <p class="text-gray-500 text-xl">
+            ฝึกสัมภาษณ์ผ่านเสียง
+          </p>
+
+        </button>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CHAT PAGE -->
+  <section id="dashboardPage" class="hidden">
+
+    <div class="flex min-h-screen">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar w-[260px] bg-sky-600 text-white p-6 flex flex-col">
+
+        <h1 class="text-3xl font-bold mb-10">
+          AI interview
+        </h1>
+
+        <nav class="space-y-3">
+
+          <button
+            onclick="goChat()"
+            class="active-sidebar w-full text-left bg-sky-700 px-4 py-3 rounded-xl font-semibold"
+          >
+            Chat with AI
+          </button>
+
+          <button
+            onclick="goVoice()"
+            class="sidebar-btn w-full text-left px-4 py-3 rounded-xl hover:bg-sky-700"
+          >
+            Voice with AI
+          </button>
+
+        </nav>
+
+        <button
+          onclick="logout()"
+          class="mt-auto w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold"
+        >
+          Logout
+        </button>
+
+      </aside>
+
+      <!-- MAIN -->
+      <main class="flex-1 p-8">
+
+        <div class="flex gap-6 min-h-[820px]">
+
+          <!-- LEFT -->
+          <section class="card border rounded-3xl p-5 w-[320px] flex flex-col">
+
+            <div class="flex justify-between items-center mb-8">
+
+              <h3 class="font-bold text-3xl">
+                AI Mode
+              </h3>
+
+              <span class="bg-sky-100 text-sky-600 px-3 py-1 rounded-full text-sm">
+                2 Mode
+              </span>
+
+            </div>
+
+            <div class="space-y-6">
+
+              <div class="border rounded-3xl p-6 hover:bg-sky-50 transition cursor-pointer">
+
+                <h4 class="font-bold text-3xl mb-3">
+                  Normal mode
+                </h4>
+
+                <p class="mode-desc text-gray-500 text-lg">
+                  เป็นการฝึกแบบสบายๆ
+                </p>
+
+              </div>
+
+              <div class="border rounded-3xl p-6 hover:bg-sky-50 transition cursor-pointer">
+
+                <h4 class="font-bold text-3xl mb-3">
+                  Virtual mode
+                </h4>
+
+                <p class="mode-desc text-gray-500 text-lg">
+                  เป็นการฝึกแบบจริงจัง
+                </p>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- CHAT AREA -->
+          <section class="card border rounded-3xl p-8 flex-1 flex flex-col">
+
+            <!-- TOP -->
+            <div class="flex justify-between items-center mb-8">
+
+              <h1 class="text-6xl font-bold text-sky-600">
+                Chat with AI
+              </h1>
+
+              <div class="flex items-center gap-3">
+
+                <button
+                  id="themeBtn"
+                  onclick="toggleTheme()"
+                  class="w-12 h-12 rounded-full border flex items-center justify-center text-2xl"
+                >
+                  🌙
+                </button>
+
+                <span class="welcome text-lg text-gray-600">
+                  Welcome back
+                </span>
+
+                <div class="w-12 h-12 bg-sky-400 rounded-full"></div>
+
+              </div>
+            </div>
+
+            <!-- HEADER -->
+            <div class="flex justify-between items-start border-b pb-5 mb-8">
+
+              <div>
+                <h3 class="font-bold text-5xl">
+                  AI Interviewer
+                </h3>
+
+                <p class="text-green-500 text-xl mt-2">
+                  Online
+                </p>
+              </div>
+
+              <button class="bg-sky-500 text-white px-6 py-3 rounded-2xl text-lg">
+                Start Interview
+              </button>
+
+            </div>
+
+            <!-- CHAT -->
+            <div class="flex-1 flex flex-col justify-between">
+
+              <div class="space-y-8">
+
+                <div class="bg-sky-50 p-6 rounded-3xl max-w-2xl text-black">
+
+                  <h4 class="font-bold text-3xl mb-4">
+                    AI Question
+                  </h4>
+
+                  <p class="text-xl">
+                    Tell me about yourself and your experience.
+                  </p>
+
+                </div>
+
+                <div class="bg-sky-500 text-white p-6 rounded-3xl max-w-2xl ml-auto">
+
+                  <p class="text-xl">
+                    I am a student interested in web development and AI systems.
+                  </p>
+
+                </div>
+
+              </div>
+
+              <!-- INPUT -->
+              <div class="flex gap-4 mt-10">
+
+                <input
+                  class="flex-1 border px-6 py-5 rounded-3xl outline-none text-xl"
+                  placeholder="Type your answer..."
+                />
+
+                <button class="bg-sky-500 text-white px-8 rounded-3xl text-3xl">
+                  ➤
+                </button>
+
+              </div>
+
+            </div>
+
+          </section>
+
+        </div>
+
+      </main>
+
+    </div>
+  </section>
+
+  <!-- VOICE PAGE -->
+  <section id="voicePage" class="hidden">
+
+    <div class="flex min-h-screen">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar w-[260px] bg-sky-600 text-white p-6 flex flex-col">
+
+        <h1 class="text-3xl font-bold mb-10">
+          AI interview
+        </h1>
+
+        <nav class="space-y-3">
+
+          <button
+            onclick="goChat()"
+            class="sidebar-btn w-full text-left px-4 py-3 rounded-xl hover:bg-sky-700"
+          >
+            Chat with AI
+          </button>
+
+          <button
+            onclick="goVoice()"
+            class="active-sidebar w-full text-left bg-sky-700 px-4 py-3 rounded-xl font-semibold"
+          >
+            Voice with AI
+          </button>
+
+        </nav>
+
+        <button
+          onclick="logout()"
+          class="mt-auto w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold"
+        >
+          Logout
+        </button>
+
+      </aside>
+
+      <!-- MAIN -->
+      <main class="flex-1 p-8">
+
+        <div class="flex gap-6 min-h-[820px]">
+
+          <!-- LEFT -->
+          <section class="card border rounded-3xl p-5 w-[320px]">
+
+            <h3 class="font-bold text-3xl mb-8">
+              Voice Mode
+            </h3>
+
+            <div class="space-y-6">
+
+              <div class="border rounded-3xl p-6">
+
+                <h4 class="font-bold text-3xl mb-3">
+                  Normal voice
+                </h4>
+
+                <p class="mode-desc text-gray-500 text-lg">
+                  ฝึกพูดแบบสบายๆ
+                </p>
+
+              </div>
+
+              <div class="border rounded-3xl p-6">
+
+                <h4 class="font-bold text-3xl mb-3">
+                  Virtual voice
+                </h4>
+
+                <p class="mode-desc text-gray-500 text-lg">
+                  ฝึกพูดแบบจริงจัง
+                </p>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- VOICE AREA -->
+          <section class="card border rounded-3xl p-8 flex-1 flex flex-col">
+
+            <!-- TOP -->
+            <div class="flex justify-between items-center mb-8">
+
+              <h1 class="text-6xl font-bold text-sky-600">
+                Voice with AI
+              </h1>
+
+              <div class="flex items-center gap-3">
+
+                <button
+                  onclick="toggleTheme()"
+                  class="w-12 h-12 rounded-full border flex items-center justify-center text-2xl"
+                >
+                  🌙
+                </button>
+
+                <span class="welcome text-lg text-gray-600">
+                  Welcome back
+                </span>
+
+                <div class="w-12 h-12 bg-sky-400 rounded-full"></div>
+
+              </div>
+            </div>
+
+            <!-- HEADER -->
+            <div class="border-b pb-5 mb-8">
+
+              <h3 class="font-bold text-5xl">
+                AI Voice Interviewer
+              </h3>
+
+              <p class="text-green-500 text-xl mt-2">
+                Ready to speak
+              </p>
+
+            </div>
+
+            <!-- CENTER -->
+            <div class="flex-1 flex flex-col items-center justify-center text-center">
+
+              <div class="w-48 h-48 rounded-full bg-sky-100 flex items-center justify-center text-8xl mb-10">
+                🎙️
+              </div>
+
+              <h2 class="text-5xl font-bold mb-5">
+                Tap to start speaking
+              </h2>
+
+              <p class="text-gray-500 text-2xl mb-10">
+                กดปุ่มด้านล่างเพื่อเริ่มฝึกสัมภาษณ์ด้วยเสียง
+              </p>
+
+              <button class="bg-sky-500 hover:bg-sky-600 text-white px-12 py-5 rounded-3xl text-2xl font-bold">
+                Start Voice Interview
+              </button>
+
+            </div>
+
+          </section>
+
+        </div>
+
+      </main>
+
+    </div>
+  </section>
+
+  <script>
+    function login() {
+      document.getElementById("loginPage").classList.add("hidden");
+      document.getElementById("homePage").classList.remove("hidden");
+    }
+
+    function goChat() {
+      document.getElementById("homePage").classList.add("hidden");
+      document.getElementById("voicePage").classList.add("hidden");
+      document.getElementById("dashboardPage").classList.remove("hidden");
+    }
+
+    function goVoice() {
+      document.getElementById("homePage").classList.add("hidden");
+      document.getElementById("dashboardPage").classList.add("hidden");
+      document.getElementById("voicePage").classList.remove("hidden");
+    }
+
+    function logout() {
+      document.getElementById("dashboardPage").classList.add("hidden");
+      document.getElementById("voicePage").classList.add("hidden");
+      document.getElementById("homePage").classList.add("hidden");
+      document.getElementById("loginPage").classList.remove("hidden");
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("dark");
+
+      const btn = document.getElementById("themeBtn");
+
+      if (btn) {
+        if (document.body.classList.contains("dark")) {
+          btn.textContent = "☀️";
+        } else {
+          btn.textContent = "🌙";
+        }
+      }
+    }
+  </script>
+
+</body>
+</html>
