@@ -8,7 +8,7 @@ const WEBHOOK_SERVER_URL = 'https://cs497-botnoi-backend.onrender.com'
 // Configuration
 const CONFIG = {
   bot_id: '69fc494afb3079f00790fcf7',
-  signingSecret: 'sk_live_aa9402fa949f2fa599d17b57f9e27df9',
+  signingSecret: 'YOUR_SECRET_KEY',
   display_name: 'AI Interview User'
 }
 

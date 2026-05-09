@@ -15,7 +15,7 @@ app.use(express.json())
 // Configuration
 const CONFIG = {
   bot_id: '69fc494afb3079f00790fcf7',
-  signingSecret: 'sk_live_aa9402fa949f2fa599d17b57f9e27df9',
+  signingSecret: process.env.BOTNOI_SECRET || 'YOUR_SECRET_KEY',
   botnoi_webhook_url: 'https://api-gateway.botnoi.ai/webhook/custom/69fc494afb3079f00790fcf7',
   ngrok_url: 'https://cs497-botnoi-backend.onrender.com'
 }
@@ -97,8 +97,10 @@ app.post('/api/send-message', async (req, res) => {
       'Content-Type': 'application/json'
     }
 
-    if (signingSecret) {
-      const signature = generateSignature(bodyString, signingSecret)
+    const activeSecret = (signingSecret && signingSecret !== 'YOUR_SECRET_KEY') ? signingSecret : (CONFIG.signingSecret !== 'YOUR_SECRET_KEY' ? CONFIG.signingSecret : null);
+
+    if (activeSecret) {
+      const signature = generateSignature(bodyString, activeSecret)
       headers['X-Platform-Signature'] = signature
       headers['X-Platform-Timestamp'] = timestampSec
 
