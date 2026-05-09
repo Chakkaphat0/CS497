@@ -179,25 +179,38 @@ app.post('/webhook', (req, res) => {
       }
     }
 
-    // Extract message from Botnoi response
-    const message = req.body.message || {}
-    const sender = req.body.sender || {}
+    // Extract messages from Botnoi response
+    let messagesToBroadcast = []
 
-    // Broadcast to all connected clients
-    const response = {
-      type: 'ai',
-      text: message.text || 'No response text',
-      sender: sender.display_name || 'AI',
-      timestamp: message.timestamp,
-      mid: message.mid
+    if (Array.isArray(req.body.messages)) {
+      // New Botnoi format uses "messages" array
+      messagesToBroadcast = req.body.messages
+    } else if (req.body.message) {
+      // Fallback for object format
+      messagesToBroadcast = [req.body.message]
     }
 
-    console.log('Broadcasting to', clients.size, 'connected clients:', response)
+    if (messagesToBroadcast.length === 0) {
+      console.log('No messages found in webhook payload')
+      return res.status(200).json({ success: true })
+    }
 
-    // Send to all connected clients via Server-Sent Events
-    clients.forEach((client, clientId) => {
-      console.log('Sending to client:', clientId)
-      client.write(`data: ${JSON.stringify(response)}\n\n`)
+    // Broadcast each message to connected clients
+    messagesToBroadcast.forEach(msg => {
+      const response = {
+        type: 'ai',
+        text: msg.text || 'No response text',
+        sender: 'AI Interviewer', // Botnoi reply doesn't include sender display_name
+        timestamp: msg.timestamp,
+        mid: msg.mid
+      }
+
+      console.log('Broadcasting to', clients.size, 'connected clients:', response)
+
+      // Send to all connected clients via Server-Sent Events
+      clients.forEach((client, clientId) => {
+        client.write(`data: ${JSON.stringify(response)}\n\n`)
+      })
     })
 
     // Acknowledge receipt
