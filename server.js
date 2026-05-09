@@ -50,12 +50,12 @@ function generateSignature(body, signingSecret) {
 function verifySignature(body, signature, secret) {
   const hash = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
   const expectedSignature = `sha256=${hash}`
-  
+
   console.log('Signature Verification:')
   console.log('- Received Signature:', signature)
   console.log('- Expected Signature:', expectedSignature)
   console.log('- Match:', signature === expectedSignature)
-  
+
   return signature === expectedSignature
 }
 
@@ -166,7 +166,7 @@ app.post('/webhook', (req, res) => {
     console.log('Headers:', JSON.stringify(req.headers, null, 2))
     console.log('Body:', JSON.stringify(req.body, null, 2))
     console.log('='.repeat(60) + '\n')
-    
+
     const body = req.rawBody || JSON.stringify(req.body)
     const signature = req.headers['x-platform-signature']
 
@@ -192,7 +192,7 @@ app.post('/webhook', (req, res) => {
     }
 
     console.log('Broadcasting to', clients.size, 'connected clients:', response)
-    
+
     // Send to all connected clients via Server-Sent Events
     clients.forEach((client, clientId) => {
       console.log('Sending to client:', clientId)
@@ -200,8 +200,8 @@ app.post('/webhook', (req, res) => {
     })
 
     // Acknowledge receipt
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Message received and broadcasted',
       received_at: new Date().toISOString()
     })
@@ -265,8 +265,8 @@ app.get('/api/config', (req, res) => {
  * GET /health - Health check
  */
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     connectedClients: clients.size
   })
@@ -278,7 +278,7 @@ app.get('/health', (req, res) => {
 app.post('/test-webhook', (req, res) => {
   console.log('=== TEST WEBHOOK RECEIVED ===')
   console.log('Body:', JSON.stringify(req.body, null, 2))
-  
+
   const testResponse = {
     type: 'ai',
     text: 'This is a test response from Botnoi',
@@ -287,7 +287,7 @@ app.post('/test-webhook', (req, res) => {
   }
 
   console.log('Broadcasting test message to', clients.size, 'clients')
-  
+
   clients.forEach((client, clientId) => {
     console.log('Sending to client:', clientId)
     client.write(`data: ${JSON.stringify(testResponse)}\n\n`)
