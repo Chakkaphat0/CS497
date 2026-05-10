@@ -73,12 +73,42 @@ export default function LoginPage({ onLogin }) {
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white py-4 rounded-xl font-semibold shadow-lg shadow-primary-500/30 transition-all hover-lift"
-          >
-            {isRegistering ? 'Register' : 'Sign In'}
-          </button>
+          <div className="space-y-3">
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white py-4 rounded-xl font-semibold shadow-lg shadow-primary-500/30 transition-all hover-lift"
+            >
+              {isRegistering ? 'Register' : 'Sign In'}
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                setError('');
+                const testEmail = 'test@example.com';
+                const testPassword = 'password123';
+                try {
+                  await signInWithEmailAndPassword(auth, testEmail, testPassword);
+                  onLogin();
+                } catch (err) {
+                  // If account doesn't exist, create it automatically
+                  if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+                    try {
+                      await createUserWithEmailAndPassword(auth, testEmail, testPassword);
+                      onLogin();
+                    } catch (registerErr) {
+                      setError(registerErr.message);
+                    }
+                  } else {
+                    setError(err.message);
+                  }
+                }
+              }}
+              className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 py-3 rounded-xl font-medium transition-all hover-lift border border-gray-200 dark:border-gray-700"
+            >
+              🚀 Login with Test Account
+            </button>
+          </div>
         </form>
 
         <div className="mt-6 text-center">
