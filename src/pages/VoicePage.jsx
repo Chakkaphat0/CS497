@@ -1,13 +1,97 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 
 export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, toggleTheme }) {
   const [mode, setMode] = useState('normal')
   const [isRecording, setIsRecording] = useState(false)
+  const [micStatus, setMicStatus] = useState('idle') // 'idle', 'error'
+  
+  const streamRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const analyserRef = useRef(null)
+  const animationFrameRef = useRef(null)
+  const visualizerRef = useRef(null)
+
+  const stopMicrophone = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(console.error)
+      audioContextRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    if (visualizerRef.current) {
+      visualizerRef.current.style.transform = 'scale(1)'
+      visualizerRef.current.style.boxShadow = 'none'
+    }
+    setIsRecording(false)
+    setMicStatus('idle')
+  }
+
+  const startMicrophone = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      setIsRecording(true)
+      setMicStatus('listening')
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      audioContextRef.current = new AudioContext()
+      analyserRef.current = audioContextRef.current.createAnalyser()
+      
+      const source = audioContextRef.current.createMediaStreamSource(stream)
+      source.connect(analyserRef.current)
+      
+      analyserRef.current.fftSize = 256
+      const bufferLength = analyserRef.current.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+
+      const updateVisualizer = () => {
+        if (!analyserRef.current) return;
+        
+        analyserRef.current.getByteFrequencyData(dataArray)
+        const average = dataArray.reduce((acc, val) => acc + val, 0) / bufferLength
+        
+        if (visualizerRef.current) {
+          // Calculate scale and glow based on volume
+          const scale = 1 + (average / 150)
+          const clampedScale = Math.min(Math.max(scale, 1), 1.4)
+          visualizerRef.current.style.transform = `scale(${clampedScale})`
+          
+          const glowIntensity = Math.min(average * 0.8, 100)
+          visualizerRef.current.style.boxShadow = `0 0 ${glowIntensity}px ${glowIntensity / 3}px rgba(168, 85, 247, 0.5)`
+        }
+        
+        animationFrameRef.current = requestAnimationFrame(updateVisualizer)
+      }
+
+      updateVisualizer()
+      
+    } catch (error) {
+      console.error('Error accessing microphone:', error)
+      setMicStatus('error')
+      alert('ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการอนุญาตใช้งานไมโครโฟนในเบราว์เซอร์ของคุณ')
+    }
+  }
 
   const toggleRecording = () => {
-    setIsRecording(!isRecording)
+    if (isRecording) {
+      stopMicrophone()
+    } else {
+      startMicrophone()
+    }
   }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopMicrophone()
+    }
+  }, [])
 
   return (
     <div className={`flex h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300 font-sans ${isDark ? 'dark' : ''}`}>
@@ -59,11 +143,17 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
                     <div className="absolute -inset-4 bg-purple-400 rounded-full animate-pulse opacity-10"></div>
                   </>
                 )}
-                <div className={`w-40 h-40 rounded-full flex items-center justify-center text-6xl shadow-2xl relative z-10 transition-all duration-500 ${
-                  isRecording 
-                    ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white scale-110' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
-                }`}>
+                
+                {/* Visualizer Target */}
+                <div 
+                  ref={visualizerRef}
+                  className={`w-40 h-40 rounded-full flex items-center justify-center text-6xl shadow-2xl relative z-10 transition-colors duration-300 ${
+                    isRecording 
+                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white' 
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
+                  }`}
+                  style={{ transition: 'transform 0.1s ease-out, background 0.3s' }}
+                >
                   🎙️
                 </div>
               </div>
@@ -74,8 +164,8 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
               
               <p className="text-xl text-gray-500 dark:text-gray-400 mb-12 h-14">
                 {isRecording 
-                  ? 'Speak your answer clearly. The AI is analyzing your response.' 
-                  : 'Tap the button below to start your voice interview practice.'}
+                  ? 'Speak your answer clearly. The UI will react to your voice.' 
+                  : 'Tap the button below to allow microphone access and test.'}
               </p>
 
               <button 
@@ -89,7 +179,7 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
                 {isRecording ? (
                   <>
                     <span className="w-4 h-4 bg-white rounded-sm animate-pulse"></span>
-                    Stop Recording
+                    Stop Listening
                   </>
                 ) : (
                   <>
@@ -111,12 +201,13 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
 
             <div className="space-y-4">
               <button
-                onClick={() => setMode('normal')}
+                onClick={() => !isRecording && setMode('normal')}
                 className={`w-full text-left p-5 rounded-2xl transition-all border ${
                   mode === 'normal'
                     ? 'bg-white dark:bg-gray-800 border-purple-500 shadow-md ring-1 ring-purple-500'
                     : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
-                }`}
+                } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isRecording}
               >
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-lg text-gray-900 dark:text-white">Normal Voice</h4>
@@ -128,12 +219,13 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
               </button>
 
               <button
-                onClick={() => setMode('virtual')}
+                onClick={() => !isRecording && setMode('virtual')}
                 className={`w-full text-left p-5 rounded-2xl transition-all border ${
                   mode === 'virtual'
                     ? 'bg-white dark:bg-gray-800 border-pink-500 shadow-md ring-1 ring-pink-500'
                     : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-pink-300 dark:hover:border-pink-700'
-                }`}
+                } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isRecording}
               >
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-lg text-gray-900 dark:text-white">Virtual Voice</h4>
@@ -146,13 +238,30 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
             </div>
             
             <div className="mt-8 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-               <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-2">Microphone Check</h4>
-               <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                 </svg>
-                 Microphone detected
-               </p>
+               <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-2">Microphone Status</h4>
+               
+               {micStatus === 'error' ? (
+                 <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                   </svg>
+                   Access Denied
+                 </p>
+               ) : micStatus === 'listening' ? (
+                 <p className="text-sm text-purple-600 dark:text-purple-400 flex items-center gap-2 font-bold animate-pulse">
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                   </svg>
+                   Microphone is active
+                 </p>
+               ) : (
+                 <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                   </svg>
+                   Ready to connect
+                 </p>
+               )}
             </div>
           </div>
         </div>
