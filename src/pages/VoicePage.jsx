@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 
-export default function VoicePage({ onGoChat, onLogout, isDark, toggleTheme }) {
+export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, toggleTheme }) {
   const [mode, setMode] = useState('normal')
   const [isRecording, setIsRecording] = useState(false)
 
@@ -14,6 +14,7 @@ export default function VoicePage({ onGoChat, onLogout, isDark, toggleTheme }) {
       <Sidebar 
         activeTab="voice" 
         onGoChat={onGoChat} 
+        onGoHistory={onGoHistory}
         onLogout={onLogout}
       />
 

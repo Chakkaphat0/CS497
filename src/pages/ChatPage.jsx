@@ -7,7 +7,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
 const CONFIG = getConfig()
 
-export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
+export default function ChatPage({ onGoVoice, onGoHistory, onLogout, isDark, toggleTheme }) {
   const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
   const [mode, setMode] = useState('normal')
@@ -139,6 +139,7 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
       <Sidebar 
         activeTab="chat" 
         onGoVoice={onGoVoice} 
+        onGoHistory={onGoHistory}
         onLogout={onLogout}
       />
 

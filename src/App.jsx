@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
 import VoicePage from './pages/VoicePage'
 import ProfilePage from './pages/ProfilePage'
+import HistoryPage from './pages/HistoryPage'
 import './index.css'
 
 function App() {
@@ -34,6 +35,10 @@ function App() {
     setCurrentPage('voice')
   }
 
+  const handleGoHistory = () => {
+    setCurrentPage('history')
+  }
+
   const handleGoProfile = () => {
     setCurrentPage('profile')
   }
@@ -54,6 +59,7 @@ function App() {
       {currentPage === 'chat' && (
         <ChatPage 
           onGoVoice={handleGoVoice} 
+          onGoHistory={handleGoHistory}
           onLogout={handleLogout}
           isDark={isDark}
           toggleTheme={toggleTheme}
@@ -62,6 +68,17 @@ function App() {
       {currentPage === 'voice' && (
         <VoicePage 
           onGoChat={handleGoChat} 
+          onGoHistory={handleGoHistory}
+          onLogout={handleLogout}
+          isDark={isDark}
+          toggleTheme={toggleTheme}
+        />
+      )}
+      {currentPage === 'history' && (
+        <HistoryPage 
+          onGoChat={handleGoChat} 
+          onGoVoice={handleGoVoice}
+          onGoHistory={handleGoHistory}
           onLogout={handleLogout}
           isDark={isDark}
           toggleTheme={toggleTheme}

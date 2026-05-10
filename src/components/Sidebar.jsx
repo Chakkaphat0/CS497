@@ -1,4 +1,4 @@
-export default function Sidebar({ activeTab, onGoChat, onGoVoice, onLogout }) {
+export default function Sidebar({ activeTab, onGoChat, onGoVoice, onGoHistory, onLogout }) {
   return (
     <aside className="w-[280px] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6 flex flex-col transition-colors duration-300 z-20 shadow-sm">
       <div className="flex items-center gap-3 mb-10 px-2">
@@ -35,6 +35,18 @@ export default function Sidebar({ activeTab, onGoChat, onGoVoice, onLogout }) {
         >
           <span className="text-xl">🎙️</span>
           Voice Interview
+        </button>
+
+        <button
+          onClick={onGoHistory}
+          className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${
+            activeTab === 'history'
+              ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
+          }`}
+        >
+          <span className="text-xl">📜</span>
+          History
         </button>
       </nav>
 
