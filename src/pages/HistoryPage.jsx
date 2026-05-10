@@ -14,14 +14,21 @@ export default function HistoryPage({ onGoChat, onGoVoice, onGoHistory, onLogout
       try {
         const q = query(
           collection(db, 'chatHistory'),
-          where('userId', '==', auth.currentUser.uid),
-          orderBy('timestamp', 'desc')
+          where('userId', '==', auth.currentUser.uid)
         );
         const querySnapshot = await getDocs(q);
         const historyData = [];
         querySnapshot.forEach((doc) => {
           historyData.push({ id: doc.id, ...doc.data() });
         });
+        
+        // Sort by timestamp descending in JS to avoid requiring a Firestore Composite Index
+        historyData.sort((a, b) => {
+          const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
+          const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+          return timeB - timeA;
+        });
+        
         setHistory(historyData);
       } catch (error) {
         console.error("Error fetching history: ", error);
