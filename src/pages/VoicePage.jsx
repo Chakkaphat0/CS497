@@ -4,15 +4,52 @@ import Sidebar from '../components/Sidebar'
 export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, toggleTheme }) {
   const [mode, setMode] = useState('normal')
   const [isRecording, setIsRecording] = useState(false)
-  const [micStatus, setMicStatus] = useState('idle') // 'idle', 'error'
+  const [micStatus, setMicStatus] = useState('idle') // 'idle', 'error', 'listening'
+  
+  // Device Selection States
+  const [devices, setDevices] = useState([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState('')
+  const [isTestingMic, setIsTestingMic] = useState(false)
   
   const streamRef = useRef(null)
   const audioContextRef = useRef(null)
   const analyserRef = useRef(null)
   const animationFrameRef = useRef(null)
   const visualizerRef = useRef(null)
+  const testVisualizerRef = useRef(null)
 
-  const stopMicrophone = () => {
+  // Fetch available microphone devices
+  const fetchDevices = async () => {
+    try {
+      // Request permission briefly to get actual device labels
+      const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const devs = await navigator.mediaDevices.enumerateDevices()
+      const audioDevs = devs.filter(d => d.kind === 'audioinput')
+      
+      setDevices(audioDevs)
+      if (audioDevs.length > 0) {
+        // Set to default or the first one available
+        const defaultDev = audioDevs.find(d => d.deviceId === 'default')
+        setSelectedDeviceId(defaultDev ? defaultDev.deviceId : audioDevs[0].deviceId)
+      }
+      
+      // Stop temp stream immediately
+      tempStream.getTracks().forEach(t => t.stop())
+    } catch (err) {
+      console.error('Permission denied or error fetching devices', err)
+      setMicStatus('error')
+    }
+  }
+
+  useEffect(() => {
+    fetchDevices()
+    return () => {
+      stopAudioTracks()
+    }
+  }, [])
+
+  // Core audio stopping logic
+  const stopAudioTracks = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
     }
@@ -24,6 +61,10 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
+  }
+
+  const stopInterviewMic = () => {
+    stopAudioTracks()
     if (visualizerRef.current) {
       visualizerRef.current.style.transform = 'scale(1)'
       visualizerRef.current.style.boxShadow = 'none'
@@ -32,13 +73,28 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
     setMicStatus('idle')
   }
 
-  const startMicrophone = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      setIsRecording(true)
-      setMicStatus('listening')
+  const stopTestMic = () => {
+    stopAudioTracks()
+    if (testVisualizerRef.current) {
+      testVisualizerRef.current.style.width = '0%'
+    }
+    setIsTestingMic(false)
+  }
 
+  // Get stream with selected device
+  const getAudioStream = async () => {
+    const constraints = {
+      audio: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : true
+    }
+    return await navigator.mediaDevices.getUserMedia(constraints)
+  }
+
+  // Setup visualizer loop
+  const setupAudioVisualization = async (targetRef, type) => {
+    try {
+      const stream = await getAudioStream()
+      streamRef.current = stream
+      
       const AudioContext = window.AudioContext || window.webkitAudioContext
       audioContextRef.current = new AudioContext()
       analyserRef.current = audioContextRef.current.createAnalyser()
@@ -56,42 +112,72 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
         analyserRef.current.getByteFrequencyData(dataArray)
         const average = dataArray.reduce((acc, val) => acc + val, 0) / bufferLength
         
-        if (visualizerRef.current) {
-          // Calculate scale and glow based on volume
-          const scale = 1 + (average / 150)
-          const clampedScale = Math.min(Math.max(scale, 1), 1.4)
-          visualizerRef.current.style.transform = `scale(${clampedScale})`
-          
-          const glowIntensity = Math.min(average * 0.8, 100)
-          visualizerRef.current.style.boxShadow = `0 0 ${glowIntensity}px ${glowIntensity / 3}px rgba(168, 85, 247, 0.5)`
+        if (targetRef.current) {
+          if (type === 'interview') {
+            const scale = 1 + (average / 150)
+            const clampedScale = Math.min(Math.max(scale, 1), 1.4)
+            targetRef.current.style.transform = `scale(${clampedScale})`
+            
+            const glowIntensity = Math.min(average * 0.8, 100)
+            targetRef.current.style.boxShadow = `0 0 ${glowIntensity}px ${glowIntensity / 3}px rgba(168, 85, 247, 0.5)`
+          } else if (type === 'test') {
+            const widthPct = Math.min((average / 120) * 100, 100)
+            targetRef.current.style.width = `${widthPct}%`
+            // Dynamic color based on volume level
+            if (widthPct > 85) targetRef.current.style.backgroundColor = '#ef4444' // red
+            else if (widthPct > 50) targetRef.current.style.backgroundColor = '#f59e0b' // yellow
+            else targetRef.current.style.backgroundColor = '#22c55e' // green
+          }
         }
         
         animationFrameRef.current = requestAnimationFrame(updateVisualizer)
       }
 
       updateVisualizer()
-      
+      return true
     } catch (error) {
       console.error('Error accessing microphone:', error)
+      return false
+    }
+  }
+
+  const startInterviewMic = async () => {
+    setIsRecording(true)
+    setMicStatus('listening')
+    const success = await setupAudioVisualization(visualizerRef, 'interview')
+    if (!success) {
+      setIsRecording(false)
       setMicStatus('error')
-      alert('ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการอนุญาตใช้งานไมโครโฟนในเบราว์เซอร์ของคุณ')
+      alert('ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการอนุญาตใช้งานในเบราว์เซอร์')
+    }
+  }
+
+  const startTestMic = async () => {
+    setIsTestingMic(true)
+    const success = await setupAudioVisualization(testVisualizerRef, 'test')
+    if (!success) {
+      setIsTestingMic(false)
+      alert('ไม่สามารถเข้าถึงไมโครโฟนตัวที่เลือกได้')
     }
   }
 
   const toggleRecording = () => {
     if (isRecording) {
-      stopMicrophone()
+      stopInterviewMic()
     } else {
-      startMicrophone()
+      if (isTestingMic) stopTestMic() // ensure test is stopped before starting real interview
+      startInterviewMic()
     }
   }
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopMicrophone()
+  const toggleTestMic = () => {
+    if (isTestingMic) {
+      stopTestMic()
+    } else {
+      if (isRecording) stopInterviewMic() // ensure interview is stopped before testing
+      startTestMic()
     }
-  }, [])
+  }
 
   return (
     <div className={`flex h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300 font-sans ${isDark ? 'dark' : ''}`}>
@@ -165,7 +251,7 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
               <p className="text-xl text-gray-500 dark:text-gray-400 mb-12 h-14">
                 {isRecording 
                   ? 'Speak your answer clearly. The UI will react to your voice.' 
-                  : 'Tap the button below to allow microphone access and test.'}
+                  : 'Select your microphone on the right, test it, then start.'}
               </p>
 
               <button 
@@ -194,9 +280,9 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
           </div>
 
           {/* Right Sidebar - Mode Settings */}
-          <div className="w-80 border-l border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col shrink-0 hidden lg:flex">
+          <div className="w-80 border-l border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-6 flex flex-col shrink-0 hidden lg:flex overflow-y-auto">
             <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-6">
-              Voice Settings
+              Interview Settings
             </h3>
 
             <div className="space-y-4">
@@ -237,32 +323,59 @@ export default function VoicePage({ onGoChat, onGoHistory, onLogout, isDark, tog
               </button>
             </div>
             
+            {/* Microphone Selection and Testing */}
             <div className="mt-8 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700">
-               <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-2">Microphone Status</h4>
+               <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-3">Microphone Selection</h4>
                
-               {micStatus === 'error' ? (
-                 <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                   </svg>
-                   Access Denied
-                 </p>
-               ) : micStatus === 'listening' ? (
-                 <p className="text-sm text-purple-600 dark:text-purple-400 flex items-center gap-2 font-bold animate-pulse">
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                   </svg>
-                   Microphone is active
-                 </p>
-               ) : (
-                 <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                   </svg>
-                   Ready to connect
-                 </p>
+               {micStatus === 'error' && (
+                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs rounded-lg border border-red-100 dark:border-red-800/30">
+                   Access to microphone denied. Please allow it in browser settings.
+                 </div>
                )}
+
+               <select 
+                 value={selectedDeviceId} 
+                 onChange={(e) => setSelectedDeviceId(e.target.value)}
+                 className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded-lg p-2.5 mb-4 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500 outline-none"
+                 disabled={isRecording || isTestingMic}
+               >
+                 {devices.length === 0 && <option value="">Searching for devices...</option>}
+                 {devices.map(device => (
+                   <option key={device.deviceId} value={device.deviceId}>
+                     {device.label || `Microphone ${device.deviceId.slice(0, 5)}...`}
+                   </option>
+                 ))}
+               </select>
+
+               <button 
+                 onClick={toggleTestMic}
+                 disabled={isRecording || devices.length === 0}
+                 className={`w-full py-2.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                   isTestingMic 
+                     ? 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400' 
+                     : 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400'
+                 } disabled:opacity-50 disabled:cursor-not-allowed`}
+               >
+                 {isTestingMic ? (
+                   <>
+                     <span className="w-2 h-2 bg-red-600 dark:bg-red-400 rounded-full animate-pulse"></span>
+                     Stop Test
+                   </>
+                 ) : (
+                   'Test Microphone'
+                 )}
+               </button>
+
+               <div className={`mt-4 transition-all duration-300 overflow-hidden ${isTestingMic ? 'h-10 opacity-100' : 'h-0 opacity-0'}`}>
+                 <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
+                   <span>Input Level</span>
+                 </div>
+                 <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                   <div ref={testVisualizerRef} className="h-full bg-green-500 w-0" style={{ transition: 'width 0.1s ease-out, background-color 0.2s ease-out' }}></div>
+                 </div>
+               </div>
             </div>
+
           </div>
         </div>
       </main>
