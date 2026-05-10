@@ -3,6 +3,7 @@ import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
 import ChatPage from './pages/ChatPage'
 import VoicePage from './pages/VoicePage'
+import ProfilePage from './pages/ProfilePage'
 import './index.css'
 
 function App() {
@@ -21,12 +22,20 @@ function App() {
     setCurrentPage('home')
   }
 
+  const handleGoHome = () => {
+    setCurrentPage('home')
+  }
+
   const handleGoChat = () => {
     setCurrentPage('chat')
   }
 
   const handleGoVoice = () => {
     setCurrentPage('voice')
+  }
+
+  const handleGoProfile = () => {
+    setCurrentPage('profile')
   }
 
   const handleLogout = () => {
@@ -40,7 +49,8 @@ function App() {
   return (
     <div className={`transition-all duration-300 ${isDark ? 'dark' : ''}`}>
       {currentPage === 'login' && <LoginPage onLogin={handleLogin} />}
-      {currentPage === 'home' && <HomePage onGoChat={handleGoChat} onGoVoice={handleGoVoice} />}
+      {currentPage === 'home' && <HomePage onGoChat={handleGoChat} onGoVoice={handleGoVoice} onGoProfile={handleGoProfile} />}
+      {currentPage === 'profile' && <ProfilePage onBack={handleGoHome} onLogout={handleLogout} />}
       {currentPage === 'chat' && (
         <ChatPage 
           onGoVoice={handleGoVoice} 

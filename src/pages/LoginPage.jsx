@@ -1,13 +1,27 @@
 import { useState } from 'react'
+import { auth } from '../firebase'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
 
 export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isRegistering, setIsRegistering] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleLogin = (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
+    setError('');
     if (email && password) {
-      onLogin()
+      try {
+        if (isRegistering) {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+        onLogin();
+      } catch (err) {
+        setError(err.message);
+      }
     }
   }
 
@@ -17,7 +31,7 @@ export default function LoginPage({ onLogin }) {
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primary-400/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400/20 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="glass-panel w-full max-w-md rounded-[2rem] p-10 relative z-10 animate-fade-in-up">
+      <div className="glass-panel w-full max-w-md rounded-[2rem] p-10 relative z-10 animate-fade-in-up bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200 dark:border-gray-800 shadow-2xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-600 to-purple-600 text-white shadow-lg mb-6">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -28,11 +42,13 @@ export default function LoginPage({ onLogin }) {
             AI Interview
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            Sign in to start your practice
+            {isRegistering ? 'Create a new account' : 'Sign in to start your practice'}
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-xl text-sm">{error}</div>}
+
+        <form onSubmit={handleAuth} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
             <input
@@ -61,9 +77,18 @@ export default function LoginPage({ onLogin }) {
             type="submit"
             className="w-full bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-700 hover:to-primary-600 text-white py-4 rounded-xl font-semibold shadow-lg shadow-primary-500/30 transition-all hover-lift"
           >
-            Sign In
+            {isRegistering ? 'Register' : 'Sign In'}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <button 
+            onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
+            className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium"
+          >
+            {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
+          </button>
+        </div>
       </div>
     </section>
   )

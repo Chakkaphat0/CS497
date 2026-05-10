@@ -1,4 +1,4 @@
-export default function HomePage({ onGoChat, onGoVoice }) {
+export default function HomePage({ onGoChat, onGoVoice, onGoProfile }) {
   return (
     <section className="min-h-screen flex items-center justify-center p-8 bg-gray-50 dark:bg-gray-950 transition-colors duration-500 relative overflow-hidden">
       {/* Background decorations */}
@@ -7,7 +7,19 @@ export default function HomePage({ onGoChat, onGoVoice }) {
         <div className="absolute bottom-[-20%] right-[-10%] w-[50rem] h-[50rem] bg-purple-400/10 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="max-w-5xl w-full z-10">
+      <div className="absolute top-6 right-6 z-20">
+        <button 
+          onClick={onGoProfile}
+          className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border border-gray-200 dark:border-gray-800 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm transition-all"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+          </svg>
+          Profile
+        </button>
+      </div>
+
+      <div className="max-w-5xl w-full z-10 mt-12">
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-purple-600 mb-6 tracking-tight">
             Choose Your Interview Mode
