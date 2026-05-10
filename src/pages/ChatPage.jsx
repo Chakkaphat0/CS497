@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import Sidebar from '../components/Sidebar'
 import { sendMessageToWebhook, getConfig } from '../services/webhookService'
-import { connectSSE, disconnectSSE, subscribeToMessages } from '../services/sseService'
+import { connectSSE, disconnectSSE } from '../services/sseService'
+import { auth, db } from '../firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
 const CONFIG = getConfig()
 
 export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
-  const [messages, setMessages] = useState([
-    { type: 'ai', text: 'Tell me about yourself and your experience.' }
-  ])
+  const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
   const [mode, setMode] = useState('normal')
   const [isLoading, setIsLoading] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState('disconnected')
+  const [isStarted, setIsStarted] = useState(false)
+  const [isEnded, setIsEnded] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const chatEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -53,8 +56,46 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
     }
   }, [])
 
+  // Save chat history when ended and AI has responded
+  useEffect(() => {
+    if (isEnded && !isLoading && !isSaving && messages.length > 0) {
+      setIsSaving(true);
+      if (auth.currentUser) {
+        addDoc(collection(db, 'chatHistory'), {
+          userId: auth.currentUser.uid,
+          messages: messages,
+          timestamp: serverTimestamp(),
+          mode: mode
+        }).then(() => {
+           alert('บันทึกประวัติการสนทนาเรียบร้อยแล้ว!');
+        }).catch((err) => {
+           console.error('Error saving chat:', err);
+           alert('ไม่สามารถบันทึกประวัติการสนทนาได้');
+        });
+      }
+    }
+  }, [isEnded, isLoading, isSaving, messages, mode])
+
+  const handleStartConversation = async () => {
+    setIsStarted(true)
+    setIsLoading(true)
+    const startMsg = 'สวัสดี'
+    setMessages([{ type: 'user', text: startMsg }])
+    
+    try {
+      const result = await sendMessageToWebhook(startMsg, mode, CONFIG.signingSecret)
+      if (!result.success) {
+        setMessages(prev => [...prev, { type: 'ai', text: `Error: ${result.error}` }])
+        setIsLoading(false)
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, { type: 'ai', text: 'Sorry, there was an error processing your message.' }])
+      setIsLoading(false)
+    }
+  }
+
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() || !isStarted || isEnded) return
 
     const userMessage = inputValue
     setMessages(prev => [...prev, { type: 'user', text: userMessage }])
@@ -64,17 +105,31 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
     try {
       const result = await sendMessageToWebhook(userMessage, mode, CONFIG.signingSecret)
       if (!result.success) {
-        setMessages(prev => [...prev, { 
-          type: 'ai', 
-          text: `Error: ${result.error}` 
-        }])
+        setMessages(prev => [...prev, { type: 'ai', text: `Error: ${result.error}` }])
         setIsLoading(false)
       }
     } catch (error) {
-      setMessages(prev => [...prev, { 
-        type: 'ai', 
-        text: 'Sorry, there was an error processing your message.' 
-      }])
+      setMessages(prev => [...prev, { type: 'ai', text: 'Sorry, there was an error processing your message.' }])
+      setIsLoading(false)
+    }
+  }
+
+  const handleEndConversation = async () => {
+    if (!isStarted || isEnded) return;
+    setIsEnded(true)
+    setIsLoading(true)
+    
+    const endMsg = 'จบการสนทนา'
+    setMessages(prev => [...prev, { type: 'user', text: endMsg }])
+    
+    try {
+      const result = await sendMessageToWebhook(endMsg, mode, CONFIG.signingSecret)
+      if (!result.success) {
+        setMessages(prev => [...prev, { type: 'ai', text: `Error: ${result.error}` }])
+        setIsLoading(false)
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, { type: 'ai', text: 'Sorry, there was an error processing your message.' }])
       setIsLoading(false)
     }
   }
@@ -106,6 +161,15 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
                connectionStatus === 'connecting' ? 'Connecting...' : 
                'Offline'}
             </div>
+            
+            {isStarted && !isEnded && (
+              <button
+                onClick={handleEndConversation}
+                className="ml-4 px-4 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-full text-sm font-semibold transition-colors"
+              >
+                End Conversation
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -127,8 +191,12 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
               <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 User
               </span>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 text-white flex items-center justify-center font-bold shadow-md">
-                U
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-2 border-primary-500 flex items-center justify-center font-bold text-gray-500">
+                {auth.currentUser?.photoURL ? (
+                  <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  auth.currentUser?.email?.charAt(0).toUpperCase() || 'U'
+                )}
               </div>
             </div>
           </div>
@@ -138,27 +206,46 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
           {/* Main Chat Area */}
           <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-950 relative">
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {messages.map((msg, idx) => (
-                <div key={idx} className={`flex ${msg.type === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                  <div className={`max-w-[80%] lg:max-w-[70%] rounded-2xl px-6 py-4 shadow-sm ${
-                    msg.type === 'ai'
-                      ? 'bg-gray-100 dark:bg-gray-800/80 text-gray-800 dark:text-gray-100 rounded-tl-none'
-                      : 'bg-primary-600 text-white rounded-tr-none'
-                  }`}>
-                    {msg.type === 'ai' && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center text-xs">
-                          🤖
-                        </div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Interviewer</span>
-                      </div>
-                    )}
-                    <p className="text-base leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+              {!isStarted ? (
+                <div className="h-full flex flex-col items-center justify-center text-center">
+                  <div className="w-24 h-24 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center text-5xl mb-6 shadow-inner">
+                    👋
                   </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Ready to start?</h2>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-md mb-8">
+                    Click the button below to initiate the interview. The AI will send a greeting message to confirm the connection.
+                  </p>
+                  <button
+                    onClick={handleStartConversation}
+                    disabled={connectionStatus !== 'connected'}
+                    className="bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-primary-500/30 hover:-translate-y-1 transition-all"
+                  >
+                    Start Conversation
+                  </button>
                 </div>
-              ))}
+              ) : (
+                messages.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.type === 'ai' ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`max-w-[80%] lg:max-w-[70%] rounded-2xl px-6 py-4 shadow-sm ${
+                      msg.type === 'ai'
+                        ? 'bg-gray-100 dark:bg-gray-800/80 text-gray-800 dark:text-gray-100 rounded-tl-none'
+                        : 'bg-primary-600 text-white rounded-tr-none'
+                    }`}>
+                      {msg.type === 'ai' && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center text-xs">
+                            🤖
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">AI Interviewer</span>
+                        </div>
+                      )}
+                      <p className="text-base leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    </div>
+                  </div>
+                ))
+              )}
               
-              {isLoading && (
+              {isLoading && isStarted && (
                 <div className="flex justify-start">
                   <div className="bg-gray-100 dark:bg-gray-800/80 rounded-2xl rounded-tl-none px-6 py-5 shadow-sm flex gap-1.5 items-center">
                     <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -171,42 +258,44 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
             </div>
 
             {/* Input Area */}
-            <div className="p-6 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 shrink-0">
-              <div className="max-w-4xl mx-auto flex gap-3 items-end">
-                <div className="flex-1 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-inner focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent transition-all">
-                  <textarea
-                    className="w-full bg-transparent px-5 py-4 outline-none text-gray-900 dark:text-white placeholder-gray-400 resize-none min-h-[56px] max-h-[200px]"
-                    placeholder="Type your answer here..."
-                    value={inputValue}
-                    onChange={(e) => {
-                      setInputValue(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (!isLoading) handleSendMessage();
-                      }
-                    }}
-                    disabled={isLoading}
-                    rows="1"
-                  />
+            {isStarted && (
+              <div className="p-6 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 shrink-0">
+                <div className="max-w-4xl mx-auto flex gap-3 items-end">
+                  <div className={`flex-1 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-inner focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent transition-all ${isEnded ? 'opacity-50' : ''}`}>
+                    <textarea
+                      className="w-full bg-transparent px-5 py-4 outline-none text-gray-900 dark:text-white placeholder-gray-400 resize-none min-h-[56px] max-h-[200px]"
+                      placeholder={isEnded ? "Interview ended. Chat is saved." : "Type your answer here..."}
+                      value={inputValue}
+                      onChange={(e) => {
+                        setInputValue(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (!isLoading && !isEnded) handleSendMessage();
+                        }
+                      }}
+                      disabled={isLoading || isEnded}
+                      rows="1"
+                    />
+                  </div>
+                  <button 
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !inputValue.trim() || isEnded}
+                    className="w-14 h-14 shrink-0 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-2xl flex items-center justify-center shadow-lg transition-all hover-lift"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                    </svg>
+                  </button>
                 </div>
-                <button 
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !inputValue.trim()}
-                  className="w-14 h-14 shrink-0 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-2xl flex items-center justify-center shadow-lg transition-all hover-lift"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform rotate-90" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                  </svg>
-                </button>
+                <div className="text-center mt-3">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Press Enter to send, Shift + Enter for new line</span>
+                </div>
               </div>
-              <div className="text-center mt-3">
-                <span className="text-xs text-gray-400 dark:text-gray-500">Press Enter to send, Shift + Enter for new line</span>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Right Sidebar - Mode Settings */}
@@ -218,11 +307,12 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
             <div className="space-y-4">
               <button
                 onClick={() => setMode('normal')}
+                disabled={isStarted}
                 className={`w-full text-left p-5 rounded-2xl transition-all border ${
                   mode === 'normal'
                     ? 'bg-white dark:bg-gray-800 border-primary-500 shadow-md ring-1 ring-primary-500'
                     : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700'
-                }`}
+                } ${isStarted ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-lg text-gray-900 dark:text-white">Normal Mode</h4>
@@ -235,11 +325,12 @@ export default function ChatPage({ onGoVoice, onLogout, isDark, toggleTheme }) {
 
               <button
                 onClick={() => setMode('virtual')}
+                disabled={isStarted}
                 className={`w-full text-left p-5 rounded-2xl transition-all border ${
                   mode === 'virtual'
                     ? 'bg-white dark:bg-gray-800 border-purple-500 shadow-md ring-1 ring-purple-500'
                     : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
-                }`}
+                } ${isStarted ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-lg text-gray-900 dark:text-white">Virtual Mode</h4>
